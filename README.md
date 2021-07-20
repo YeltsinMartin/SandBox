@@ -7,3 +7,4 @@ To practice git command
 4. update on main branch
 5. Update on the feature branch
 6. Feature 1
+7. Feature 2
