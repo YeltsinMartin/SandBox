@@ -1,25 +1,89 @@
-from ast import walk
-from msilib.schema import ListBox
-from tkinter import *
+from abc import abstractmethod, abstractstaticmethod
+from ast import List
 import tkinter as tk
 import os
-from tkinter import colorchooser
-from turtle import left
 from pygame import mixer
-
+from tkinter import colorchooser
 time = 0
 colorData = []
-hatColour = []
-shirtColour = []
-pantColour = []
-gloveColour = []
-shoeColour = []
+
+class IPerson:
+    
+    @abstractmethod
+    def getData(self) -> list:
+        """implemented in person"""
+class Person(IPerson):
+    canvas = None
+
+    def __init__(self,frame) -> None:
+        self.capColour = [0,0,0]
+        self.shirtColour = [0,0,0]
+        self.pantColour = [0,0,0]
+        self.gloveColour = [0,0,0]
+        self.shoeColour = [0,0,0]
+        self.capKey   = '#000000'
+        self.shirtKey = '#000000'
+        self.pantKey  = '#000000'
+        self.gloveKey = '#000000'
+        self.shoeKey  = '#000000'
+
+        self.capImg   =  tk.PhotoImage(file="cap.png")
+        self.shirtImg =  tk.PhotoImage(file="shirt.png")
+        self.shoeImg  =  tk.PhotoImage(file="shoe.png")
+        self.gloveImg =  tk.PhotoImage(file="glove.png")
+        self.pantImg  =  tk.PhotoImage(file="pant.png")
+
+        self.capButton   = tk.Button(frame, text="h",image=self.capImg, bg = "black", borderwidth=0,   command=self.capColorPciker)
+        self.shirtButton = tk.Button(frame, text="s",image=self.shirtImg, bg = "black", borderwidth=0, command=self.shirtColorPciker)
+        self.pantButton  = tk.Button(frame, text="p",image=self.pantImg, bg = "black", borderwidth=0,  command=self.pantColorPciker)
+        self.gloveButton = tk.Button(frame, text="g",image=self.gloveImg, bg = "black", borderwidth=0, command=self.gloveColorPciker)
+        self.shoeButton  = tk.Button(frame, text="s",image=self.shoeImg, bg = "black", borderwidth=0,  command=self.shoeColorPciker)
+
+        self.capButton.pack()   
+        self.shirtButton.pack()
+        self.pantButton.pack()
+        self.gloveButton.pack()
+        self.shoeButton.pack()
+
+    def capColorPciker(self) -> None:
+        self.capColour, self.capKey = colorchooser.askcolor()
+        self.capButton.config(bg=self.capKey)
+        Person.canvas.update()
+
+    def shirtColorPciker(self) -> None:
+        self.shirtColour, self.shirtKey = colorchooser.askcolor()
+        self.shirtButton.config(bg=self.shirtKey)
+        Person.canvas.update()
+
+    def pantColorPciker(self) -> None:
+        self.pantColour, self.pantKey = colorchooser.askcolor()
+        self.pantButton.config(bg=self.pantKey)
+        Person.canvas.update()
+
+    def gloveColorPciker(self) -> None:
+        self.gloveColour, self.gloveKey = colorchooser.askcolor()
+        self.gloveButton.config(bg=self.gloveKey)
+        Person.canvas.update()
+        
+    def shoeColorPciker(self) -> None:
+        self.shoeColour, self.shoeKey = colorchooser.askcolor()
+        self.shoeButton.config(bg=self.shoeKey)
+        Person.canvas.update()
+
+    def getData(self) -> list:
+        colorList = []
+        colorList.append({self.capKey:self.capColour})
+        colorList.append({self.shirtKey:self.shirtColour})
+        colorList.append({self.pantKey:self.pantColour})
+        colorList.append({ self.gloveKey:self.gloveColour})
+        colorList.append({self.shoeKey:self.shoeColour})
+        return colorList
 
 '''
-def hatColorPciker():
-    global hatColour
-    hatColour, color = colorchooser.askcolor()
-    hatLabel.config(bg=color)
+def capColorPciker():
+    global capColour
+    capColour, color = colorchooser.askcolor()
+    capLabel.config(bg=color)
     root.update()
 
 def shirtColorPciker():
@@ -49,7 +113,7 @@ def shoeColorPciker():
 def saveTime():
     global time
     data = []
-    data.append(hatColour)
+    data.append(capColour)
     data.append(shirtColour)
     data.append(pantColour)
     data.append(gloveColour)
@@ -70,8 +134,8 @@ root = Tk()
 root.title("Light Studio")
 root.geometry("400x400")
 
-hatLabel = Label(root, text="Hat Colour")
-hatButton = Button(root, text = "Choose hat Colour", command = hatColorPciker)
+capLabel = Label(root, text="cap Colour")
+capButton = Button(root, text = "Choose cap Colour", command = capColorPciker)
 
 
 shirtLabel = Label(root, text="shirt Colour")
@@ -94,8 +158,8 @@ timeButton = Button(root, text = "Next Frame", command = saveTime)
 
 saveButton = Button(root, text = "Save Data", command = saveData)
 
-hatLabel.pack()
-hatButton.pack()
+capLabel.pack()
+capButton.pack()
 shirtLabel.pack()
 shirtButton.pack()
 pantLabel.pack()
@@ -115,30 +179,6 @@ mp3Files = []
 datFiles = []
 
 playing = False
-def hatColorPciker():
-    hatColour, color = colorchooser.askcolor()
-    f1b1.config(bg=color)
-    canvas.update()
-
-def shirtColorPciker():
-    shirtColour, color = colorchooser.askcolor()
-    f1b2.config(bg=color)
-    canvas.update()
-
-def pantColorPciker():
-    pantColour, color = colorchooser.askcolor()
-    f1b3.config(bg=color)
-    canvas.update()
-
-def gloveColorPciker():
-    gloveColour, color = colorchooser.askcolor()
-    f1b4.config(bg=color)
-    canvas.update()
-    
-def shoeColorPciker():
-    shoeColour, color = colorchooser.askcolor()
-    f1b5.config(bg=color)
-    canvas.update()
 
 def playCmd() -> None:
     global playing
@@ -160,25 +200,42 @@ def stopCmd() -> None:
     songBox.select_clear('active')
     playing= False
 
+def saveTime():
+    global time
+    time += 1
+    data = []
+    for person in persons:
+        data.append(person.getData())
+    #print(data) ##commented for debugging
+    colorData.append(data)
+    timeLabel.config(text="TIME: {0} seconds".format(time))
+    canvas.update()
+
+def saveData():
+    with open("out.dat", "w") as file:
+        for data in colorData:
+            file.write(str(data)+ "\n")
+
+def simCmd() -> None:
+    pass
+
 for r, fo, fi in os.walk(os.getcwd()):
     mp3Files = [file for file in fi  if file.find(".mp3") != -1]
     datFiles = [file for file in fi  if file.find(".dat") != -1]
 
-canvas = Tk()
+canvas = tk.Tk()
 canvas.title("Light Studio")
 canvas.geometry("800x600")
 canvas.config(bg='black')
 
 mixer.init()
 
-playImg = PhotoImage(file="play.png")
-pauseImg = PhotoImage(file="pause.png")
-stopImg = PhotoImage(file="stop.png")
-capImg =  PhotoImage(file="cap.png")
-shirtImg =  PhotoImage(file="shirt.png")
-shoeImg =  PhotoImage(file="shoe.png")
-gloveImg =  PhotoImage(file="glove.png")
-pantImg =  PhotoImage(file="pant.png")
+playImg  = tk.PhotoImage(file="play.png")
+pauseImg = tk.PhotoImage(file="pause.png")
+stopImg  = tk.PhotoImage(file="stop.png")
+simImg   = tk.PhotoImage(file="sim.png")
+saveImg  = tk.PhotoImage(file="save.png")
+nextImg  = tk.PhotoImage(file="next.png")
 
 f0 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
 f1 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
@@ -194,87 +251,45 @@ f2.grid(row=0,column=2, sticky="nsew")
 f3.grid(row=0,column=3, sticky="nsew")
 f4.grid(row=0,column=4, sticky="nsew")
 f5.grid(row=0,column=5, sticky="nsew")
-f6.grid(row=1, sticky="nsew")
+f6.grid(row=1,columnspan=6, sticky="nsew")
 
 #try anchor
-songBox = Listbox(f0, fg = "green", bg ="black", width=50)
+songBox = tk.Listbox(f0, fg = "green", bg ="black", width=50)
 songBox.pack(padx=10, pady=10)
 
-datBox = Listbox(f0, fg = "cyan", bg ="black", width=50)
+datBox = tk.Listbox(f0, fg = "cyan", bg ="black", width=50)
 datBox.pack(padx=10, pady=10)
 
-songLabel = Label(f6, text="", fg = "yellow", bg ="black")
+songLabel = tk.Label(f6, text="", fg = "yellow", bg ="black")
 songLabel.pack()
 
+timeLabel  = tk.Label(f6, text="TIME: {0} seconds".format(time), bg="black", fg="cyan", borderwidth=0)
+nextButton = tk.Button(f6, text = "Next Frame", command = saveTime, image=nextImg, bg="black", fg="white", borderwidth=0)
+saveButton = tk.Button(f6, text = "Save Data" , command = saveData, image=saveImg, bg="black", fg="white", borderwidth=0)
+simButton  = tk.Button(f6, text = "Play"      , command = simCmd, image=simImg, bg = "black", fg="white", borderwidth=0)
 
-## 5 person
-f1b1 = tk.Button(f1, text="h",image=capImg, bg = "black", borderwidth=0, command=hatColorPciker)
-f1b2 = tk.Button(f1, text="s",image=shirtImg, bg = "black", borderwidth=0, command=shirtColorPciker)
-f1b3 = tk.Button(f1, text="p",image=pantImg, bg = "black", borderwidth=0, command=pantColorPciker)
-f1b4 = tk.Button(f1, text="g",image=gloveImg, bg = "black", borderwidth=0, command=gloveColorPciker)
-f1b5 = tk.Button(f1, text="s",image=shoeImg, bg = "black", borderwidth=0, command=shoeColorPciker)
+playButton  = tk.Button(f6, text = "Play", command=playCmd, image=playImg, bg = "black", borderwidth=0)
+pauseButton = tk.Button(f6, text = "Pause", command=pauseCmd, image=pauseImg, bg = "black", borderwidth=0)
+stopButton  = tk.Button(f6, text = "Stop", command=stopCmd, image=stopImg, bg = "black", borderwidth=0)
 
-f2b1 = tk.Button(f2, text="h",image=capImg, bg = "black", borderwidth=0)
-f2b2 = tk.Button(f2, text="s",image=shirtImg, bg = "black", borderwidth=0)
-f2b3 = tk.Button(f2, text="p",image=pantImg, bg = "black", borderwidth=0)
-f2b4 = tk.Button(f2, text="g",image=gloveImg, bg = "black", borderwidth=0)
-f2b5 = tk.Button(f2, text="s",image=shoeImg, bg = "black", borderwidth=0)
-
-f3b1 = tk.Button(f3, text="h",image=capImg, bg = "black", borderwidth=0)
-f3b2 = tk.Button(f3, text="s",image=shirtImg, bg = "black", borderwidth=0)
-f3b3 = tk.Button(f3, text="p",image=pantImg, bg = "black", borderwidth=0)
-f3b4 = tk.Button(f3, text="g",image=gloveImg, bg = "black", borderwidth=0)
-f3b5 = tk.Button(f3, text="s",image=shoeImg, bg = "black", borderwidth=0)
-
-f4b1 = tk.Button(f4, text="h",image=capImg, bg = "black", borderwidth=0)
-f4b2 = tk.Button(f4, text="s",image=shirtImg, bg = "black", borderwidth=0)
-f4b3 = tk.Button(f4, text="p",image=pantImg, bg = "black", borderwidth=0)
-f4b4 = tk.Button(f4, text="g",image=gloveImg, bg = "black", borderwidth=0)
-f4b5 = tk.Button(f4, text="s",image=shoeImg, bg = "black", borderwidth=0)
-
-f5b1 = tk.Button(f5, text="h",image=capImg, bg = "black", borderwidth=0)
-f5b2 = tk.Button(f5, text="s",image=shirtImg, bg = "black", borderwidth=0)
-f5b3 = tk.Button(f5, text="p",image=pantImg, bg = "black", borderwidth=0)
-f5b4 = tk.Button(f5, text="g",image=gloveImg, bg = "black", borderwidth=0)
-f5b5 = tk.Button(f5, text="s",image=shoeImg, bg = "black", borderwidth=0)
-
-playButton = Button(f6, text = "Play", command=playCmd, image=playImg, bg = "black", borderwidth=0)
-pauseButton = Button(f6, text = "Pause", command=pauseCmd, image=pauseImg, bg = "black", borderwidth=0)
-stopButton = Button(f6, text = "Stop", command=stopCmd, image=stopImg, bg = "black", borderwidth=0)
-
+timeLabel.pack()
 playButton.pack(padx=10, side="left")
 pauseButton.pack(padx=10, side="left")
 stopButton.pack(padx=10, side="left")
 
-f1b1.pack()
-f1b2.pack()
-f1b3.pack()
-f1b4.pack()
-f1b5.pack()
+simButton.pack(padx=20,side="right")
+saveButton.pack(padx=20,side="right")
+nextButton.pack(padx=20,side="right")
+## 5 person
 
-f2b1.pack()
-f2b2.pack()
-f2b3.pack()
-f2b4.pack()
-f2b5.pack()
+Person.canvas = canvas
 
-f3b1.pack()
-f3b2.pack()
-f3b3.pack()
-f3b4.pack()
-f3b5.pack()
-
-f4b1.pack()
-f4b2.pack()
-f4b3.pack()
-f4b4.pack()
-f4b5.pack()
-
-f5b1.pack()
-f5b2.pack()
-f5b3.pack()
-f5b4.pack()
-f5b5.pack()
+p1 = Person(f1)
+p2 = Person(f2)
+p3 = Person(f3)
+p4 = Person(f4)
+p5 = Person(f5)
+persons = [p1,p2,p3,p4,p5]
 
 for song in mp3Files:
     songBox.insert('end', song)
