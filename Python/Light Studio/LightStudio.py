@@ -27,11 +27,11 @@ class Person(IPerson):
         self.gloveKey = '#000000'
         self.shoeKey  = '#000000'
 
-        self.capImg   =  tk.PhotoImage(file="cap.png")
-        self.shirtImg =  tk.PhotoImage(file="shirt.png")
-        self.shoeImg  =  tk.PhotoImage(file="shoe.png")
-        self.gloveImg =  tk.PhotoImage(file="glove.png")
-        self.pantImg  =  tk.PhotoImage(file="pant.png")
+        self.capImg   =  tk.PhotoImage(file="Resources\\cap.png")
+        self.shirtImg =  tk.PhotoImage(file="Resources\\shirt.png")
+        self.shoeImg  =  tk.PhotoImage(file="Resources\\shoe.png")
+        self.gloveImg =  tk.PhotoImage(file="Resources\\glove.png")
+        self.pantImg  =  tk.PhotoImage(file="Resources\\pant.png")
 
         self.capButton   = tk.Button(frame, text="h",image=self.capImg, bg = "black", borderwidth=0,   command=self.capColorPciker)
         self.shirtButton = tk.Button(frame, text="s",image=self.shirtImg, bg = "black", borderwidth=0, command=self.shirtColorPciker)
@@ -219,9 +219,11 @@ def saveData():
 def simCmd() -> None:
     pass
 
+cwd = os.getcwd()
+
 for r, fo, fi in os.walk(os.getcwd()):
-    mp3Files = [file for file in fi  if file.find(".mp3") != -1]
-    datFiles = [file for file in fi  if file.find(".dat") != -1]
+    mp3Files.extend([r.replace(cwd,"")+"\\"+file for file in fi  if file.find(".mp3") != -1])
+    datFiles.extend([r.replace(cwd,"")+"\\"+file for file in fi  if file.find(".dat") != -1])
 
 canvas = tk.Tk()
 canvas.title("Light Studio")
@@ -230,12 +232,12 @@ canvas.config(bg='black')
 
 mixer.init()
 
-playImg  = tk.PhotoImage(file="play.png")
-pauseImg = tk.PhotoImage(file="pause.png")
-stopImg  = tk.PhotoImage(file="stop.png")
-simImg   = tk.PhotoImage(file="sim.png")
-saveImg  = tk.PhotoImage(file="save.png")
-nextImg  = tk.PhotoImage(file="next.png")
+playImg  = tk.PhotoImage(file="Resources\\play.png")
+pauseImg = tk.PhotoImage(file="Resources\\pause.png")
+stopImg  = tk.PhotoImage(file="Resources\\stop.png")
+simImg   = tk.PhotoImage(file="Resources\\sim.png")
+saveImg  = tk.PhotoImage(file="Resources\\save.png")
+nextImg  = tk.PhotoImage(file="Resources\\next.png")
 
 f0 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
 f1 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
@@ -260,13 +262,13 @@ songBox.pack(padx=10, pady=10)
 datBox = tk.Listbox(f0, fg = "cyan", bg ="black", width=50)
 datBox.pack(padx=10, pady=10)
 
-songLabel = tk.Label(f6, text="", fg = "yellow", bg ="black")
+songLabel = tk.Label(f6, text="", fg = "yellow", bg ="black", font="Ebrima 14")
 songLabel.pack()
 
-timeLabel  = tk.Label(f6, text="TIME: {0} seconds".format(time), bg="black", fg="cyan", borderwidth=0)
-nextButton = tk.Button(f6, text = "Next Frame", command = saveTime, image=nextImg, bg="black", fg="white", borderwidth=0)
-saveButton = tk.Button(f6, text = "Save Data" , command = saveData, image=saveImg, bg="black", fg="white", borderwidth=0)
-simButton  = tk.Button(f6, text = "Play"      , command = simCmd, image=simImg, bg = "black", fg="white", borderwidth=0)
+timeLabel  = tk.Label(f6, text="TIME: {0} seconds".format(time), bg="black",fg = "cyan", borderwidth=0, font="Ariel 14")
+nextButton = tk.Button(f6, text = "Next Frame", command = saveTime, image=nextImg, bg="black", borderwidth=0)
+saveButton = tk.Button(f6, text = "Save Data" , command = saveData, image=saveImg, bg="black", borderwidth=0)
+simButton  = tk.Button(f6, text = "Play"      , command = simCmd, image=simImg, bg = "black", borderwidth=0)
 
 playButton  = tk.Button(f6, text = "Play", command=playCmd, image=playImg, bg = "black", borderwidth=0)
 pauseButton = tk.Button(f6, text = "Pause", command=pauseCmd, image=pauseImg, bg = "black", borderwidth=0)
