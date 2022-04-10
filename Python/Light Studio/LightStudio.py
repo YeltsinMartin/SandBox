@@ -1,12 +1,58 @@
-from abc import abstractmethod, abstractstaticmethod
-from ast import List
+from abc import abstractmethod
 import tkinter as tk
+from tkinter import *
 import os
 from pygame import mixer
 from tkinter import colorchooser
-time = 0
-colorData = []
+import sqlite3
 
+class Database:
+
+    def __init__(self) -> None:
+        self.conn = sqlite3.connect('database.db')
+        self.cur = self.conn.cursor()
+        try:
+            self.cur.execute("SELECT * FROM songTable")
+            self.cur.fetchone()
+        except:
+            self.cur.execute('''CREATE TABLE songTable (
+                                                        name VARCHAR(255),
+                                                        data BLOB)''')
+
+    def getData(self, name)-> list:
+        self.cur.execute("SELECT data FROM songTable WHERE name =:name",{'name':name})
+        return self.cur.fetchone()
+
+    def getNames(self) ->list:
+        self.cur.execute("SELECT name FROM songTable")
+        return self.cur.fetchall()
+        
+    def updateData(self,name, data) -> None:
+        '''This method can UPDATE or INSERT data into the db'''
+        if self.getData(name):
+            self.cur.execute("UPDATE songTable SET data =:data WHERE name =:name",{'name':name, 'data':data})
+        else:
+            self.cur.execute("INSERT INTO songTable VALUES (:name, :data)",{'name':name, 'data':data})
+        self.conn.commit()
+
+    def close(self) ->None:
+        #print("DB closed")
+        self.conn.close()
+
+class popupWindow:
+    def __init__(self,canvas):
+        self.value=None
+        self.top=tk.Toplevel(canvas, bg ="black")
+        self.l=tk.Label(self.top,text="Enter data name:", fg = "cyan", bg ="black")
+        self.l.pack()
+        self.e=tk.Entry(self.top, fg = "cyan", bg ="black")
+        self.e.pack()
+        self.b=tk.Button(self.top,text='Save',command=self.cleanup, fg = "cyan", bg ="black")
+        self.b.pack()
+    
+    def cleanup(self):
+        self.value=self.e.get()
+        self.top.destroy()
 class IPerson:
     
     @abstractmethod
@@ -45,6 +91,14 @@ class Person(IPerson):
         self.gloveButton.pack()
         self.shoeButton.pack()
 
+    def resetColours(self) ->None:
+        self.capButton.config(bg='black')
+        self.shirtButton.config(bg='black')
+        self.pantButton.config(bg='black')
+        self.gloveButton.config(bg='black')
+        self.shoeButton.config(bg='black')
+        Person.canvas.update()
+
     def capColorPciker(self) -> None:
         self.capColour, self.capKey = colorchooser.askcolor()
         self.capButton.config(bg=self.capKey)
@@ -78,6 +132,170 @@ class Person(IPerson):
         colorList.append({ self.gloveKey:self.gloveColour})
         colorList.append({self.shoeKey:self.shoeColour})
         return colorList
+
+class MediaPlayer:
+    time = 0
+    playing = False
+    colorData = []
+    mp3Files = []
+    datFiles = []
+
+
+
+    def __init__(self,lightDatabase,f0, f6 , canvas, persons) -> None:
+        mixer.init()
+        #try anchor
+        self.lightDatabase = lightDatabase
+        self.f0 = f0
+        self.f6 = f6
+        self.canvas =  canvas
+        self.persons = persons
+        self.playImg  = tk.PhotoImage(file="Resources\\play.png")
+        self.pauseImg = tk.PhotoImage(file="Resources\\pause.png")
+        self.stopImg  = tk.PhotoImage(file="Resources\\stop.png")
+        self.simImg   = tk.PhotoImage(file="Resources\\sim.png")
+        self.saveImg  = tk.PhotoImage(file="Resources\\save.png")
+        self.nextImg  = tk.PhotoImage(file="Resources\\next.png")
+
+        self.songBox = tk.Listbox(self.f0, fg = "green", bg ="black", width=50)
+        self.datBox = tk.Listbox(self.f0, fg = "cyan", bg ="black", width=50)
+
+        self.songLabel = tk.Label(self.f6, text="", fg = "yellow", bg ="black", font="Ebrima 14")
+        self.songLabel.pack()
+
+        self.timeLabel  = tk.Label(self.f6, text="TIME: {0} seconds".format(MediaPlayer.time), bg="black",fg = "cyan", borderwidth=0, font="Ariel 14")
+        self.nextButton = tk.Button(self.f6, text = "Next Frame", command = self.saveTime, image=self.nextImg, bg="black", borderwidth=0)
+        self.saveButton = tk.Button(self.f6, text = "Save Data" , command = self.saveData, image=self.saveImg, bg="black", borderwidth=0)
+        self.simButton  = tk.Button(self.f6, text = "Play"      , command = self.simCmd, image=self.simImg, bg = "black", borderwidth=0)
+
+        self.playButton  = tk.Button(self.f6, text = "Play", command=self.playCmd, image=self.playImg, bg = "black", borderwidth=0)
+        self.pauseButton = tk.Button(self.f6, text = "Pause", command=self.pauseCmd, image=self.pauseImg, bg = "black", borderwidth=0)
+        self.stopButton  = tk.Button(self.f6, text = "Stop", command=self.stopCmd, image=self.stopImg, bg = "black", borderwidth=0)
+
+        self.songBox.pack(padx=10, pady=10)
+        self.datBox.pack(padx=10, pady=10)
+        self.timeLabel.pack()
+        self.playButton.pack(padx=10, side="left")
+        self.pauseButton.pack(padx=10, side="left")
+        self.stopButton.pack(padx=10, side="left")
+        self.simButton.pack(padx=20,side="right")
+        self.saveButton.pack(padx=20,side="right")
+        self.nextButton.pack(padx=20,side="right")
+
+        self.findMedia()
+        self.updateMedia()
+        
+    def resetColurs(self) ->None:
+        for person in self.persons:
+            person.resetColours()
+
+    def updateMedia(self) -> None:
+        self.songBox.delete(0,END)
+        for song in MediaPlayer.mp3Files:
+            self.songBox.insert('end', song[1:]) #to get rid of the leading backslash
+
+        self.datBox.delete(0,END)
+        for data in MediaPlayer.datFiles:
+            self.datBox.insert('end', data[0])
+
+    def findMedia(self) -> None:
+        MediaPlayer.mp3Files.clear()
+        MediaPlayer.datFiles.clear()
+
+        cwd = os.getcwd()
+        for r, fo, fi in os.walk(os.getcwd()):
+            MediaPlayer.mp3Files.extend([r.replace(cwd,"")+"\\"+file for file in fi  if file.find(".mp3") != -1])
+        
+        MediaPlayer.datFiles.extend(self.lightDatabase.getNames())
+
+    def playCmd(self) -> None:
+        if not MediaPlayer.playing:
+            self.songLabel.config(text= self.songBox.get("anchor"))
+            mixer.music.load(os.getcwd()+"\\"+self.songBox.get("anchor"))
+            mixer.music.play()
+            MediaPlayer.playing = True
+        else:
+            mixer.music.unpause()
+
+    def pauseCmd(self) -> None:
+        mixer.music.pause()
+
+    def stopCmd(self) -> None:
+        mixer.music.stop()
+        self.songLabel.config(text="")
+        self.songBox.select_clear('active')
+        MediaPlayer.playing= False
+
+    def saveTime(self):
+        global time
+        MediaPlayer.time += 1
+        data = []
+        for person in persons:
+            data.append(person.getData())
+        #print(data) ##commented for debugging
+        MediaPlayer.colorData.append(data)
+        self.timeLabel.config(text="TIME: {0} seconds".format(MediaPlayer.time))
+        self.canvas.update()
+
+    def saveData(self):
+        popUp=popupWindow(self.canvas)
+        self.saveButton["state"] = "disabled" 
+        self.canvas.wait_window(popUp.top)
+        self.saveButton["state"] = "normal"
+        if popUp.value:
+            self.lightDatabase.updateData(popUp.value, str(MediaPlayer.colorData))
+        self.findMedia()
+        self.updateMedia()
+        MediaPlayer.time = 0
+        self.timeLabel.config(text="TIME: {0} seconds".format(MediaPlayer.time))
+        self.resetColurs()
+        self.canvas.update()
+
+    def simCmd(self) -> None:
+        pass
+
+    def close(self) -> None:
+        #print("Mixer closed")
+        mixer.quit()
+
+canvas = tk.Tk()
+canvas.title("Light Studio")
+canvas.geometry("800x600")
+canvas.config(bg='black')
+
+
+lightDatabase = Database()
+
+f0 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+f1 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+f2 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+f3 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+f4 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+f5 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+f6 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
+
+f0.grid(row=0,column=0, sticky="nsew")
+f1.grid(row=0,column=1, sticky="nsew")
+f2.grid(row=0,column=2, sticky="nsew")
+f3.grid(row=0,column=3, sticky="nsew")
+f4.grid(row=0,column=4, sticky="nsew")
+f5.grid(row=0,column=5, sticky="nsew")
+f6.grid(row=1,columnspan=6, sticky="nsew")
+
+## 5 person
+Person.canvas = canvas
+p1 = Person(f1)
+p2 = Person(f2)
+p3 = Person(f3)
+p4 = Person(f4)
+p5 = Person(f5)
+persons = [p1,p2,p3,p4,p5]
+
+mediaPlayer = MediaPlayer(lightDatabase,f0, f6, canvas, persons)
+
+canvas.mainloop()
+mediaPlayer.close()
+lightDatabase.close()
 
 '''
 def capColorPciker():
@@ -174,130 +392,3 @@ saveButton.pack()
 
 root.mainloop()
 '''
-
-mp3Files = []
-datFiles = []
-
-playing = False
-
-def playCmd() -> None:
-    global playing
-    if not playing:
-        songLabel.config(text= songBox.get("anchor"))
-        mixer.music.load(os.getcwd()+"\\"+songBox.get("anchor"))
-        mixer.music.play()
-        playing = True
-    else:
-        mixer.music.unpause()
-
-def pauseCmd() -> None:
-    mixer.music.pause()
-
-def stopCmd() -> None:
-    global playing
-    mixer.music.stop()
-    songLabel.config(text="")
-    songBox.select_clear('active')
-    playing= False
-
-def saveTime():
-    global time
-    time += 1
-    data = []
-    for person in persons:
-        data.append(person.getData())
-    #print(data) ##commented for debugging
-    colorData.append(data)
-    timeLabel.config(text="TIME: {0} seconds".format(time))
-    canvas.update()
-
-def saveData():
-    with open("out.dat", "w") as file:
-        for data in colorData:
-            file.write(str(data)+ "\n")
-
-def simCmd() -> None:
-    pass
-
-cwd = os.getcwd()
-
-for r, fo, fi in os.walk(os.getcwd()):
-    mp3Files.extend([r.replace(cwd,"")+"\\"+file for file in fi  if file.find(".mp3") != -1])
-    datFiles.extend([r.replace(cwd,"")+"\\"+file for file in fi  if file.find(".dat") != -1])
-
-canvas = tk.Tk()
-canvas.title("Light Studio")
-canvas.geometry("800x600")
-canvas.config(bg='black')
-
-mixer.init()
-
-playImg  = tk.PhotoImage(file="Resources\\play.png")
-pauseImg = tk.PhotoImage(file="Resources\\pause.png")
-stopImg  = tk.PhotoImage(file="Resources\\stop.png")
-simImg   = tk.PhotoImage(file="Resources\\sim.png")
-saveImg  = tk.PhotoImage(file="Resources\\save.png")
-nextImg  = tk.PhotoImage(file="Resources\\next.png")
-
-f0 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-f1 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-f2 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-f3 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-f4 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-f5 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-f6 = tk.Frame(canvas,padx=10, pady=10,bg= "black")
-
-f0.grid(row=0,column=0, sticky="nsew")
-f1.grid(row=0,column=1, sticky="nsew")
-f2.grid(row=0,column=2, sticky="nsew")
-f3.grid(row=0,column=3, sticky="nsew")
-f4.grid(row=0,column=4, sticky="nsew")
-f5.grid(row=0,column=5, sticky="nsew")
-f6.grid(row=1,columnspan=6, sticky="nsew")
-
-#try anchor
-songBox = tk.Listbox(f0, fg = "green", bg ="black", width=50)
-songBox.pack(padx=10, pady=10)
-
-datBox = tk.Listbox(f0, fg = "cyan", bg ="black", width=50)
-datBox.pack(padx=10, pady=10)
-
-songLabel = tk.Label(f6, text="", fg = "yellow", bg ="black", font="Ebrima 14")
-songLabel.pack()
-
-timeLabel  = tk.Label(f6, text="TIME: {0} seconds".format(time), bg="black",fg = "cyan", borderwidth=0, font="Ariel 14")
-nextButton = tk.Button(f6, text = "Next Frame", command = saveTime, image=nextImg, bg="black", borderwidth=0)
-saveButton = tk.Button(f6, text = "Save Data" , command = saveData, image=saveImg, bg="black", borderwidth=0)
-simButton  = tk.Button(f6, text = "Play"      , command = simCmd, image=simImg, bg = "black", borderwidth=0)
-
-playButton  = tk.Button(f6, text = "Play", command=playCmd, image=playImg, bg = "black", borderwidth=0)
-pauseButton = tk.Button(f6, text = "Pause", command=pauseCmd, image=pauseImg, bg = "black", borderwidth=0)
-stopButton  = tk.Button(f6, text = "Stop", command=stopCmd, image=stopImg, bg = "black", borderwidth=0)
-
-timeLabel.pack()
-playButton.pack(padx=10, side="left")
-pauseButton.pack(padx=10, side="left")
-stopButton.pack(padx=10, side="left")
-
-simButton.pack(padx=20,side="right")
-saveButton.pack(padx=20,side="right")
-nextButton.pack(padx=20,side="right")
-## 5 person
-
-Person.canvas = canvas
-
-p1 = Person(f1)
-p2 = Person(f2)
-p3 = Person(f3)
-p4 = Person(f4)
-p5 = Person(f5)
-persons = [p1,p2,p3,p4,p5]
-
-for song in mp3Files:
-    songBox.insert('end', song)
-
-for dat in datFiles:
-    datBox.insert('end', dat)
-
-canvas.mainloop()
-mixer.quit()
