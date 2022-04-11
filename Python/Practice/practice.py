@@ -152,3 +152,16 @@ def classPractice() -> None:
     print(e1.fullname)
     print(repr(e1))
     print(e1)
+
+def shiftGrid(grid, k): #leet 1260
+    row, col = len(grid), len(grid[0])
+    while k>0:
+        previous = 0
+        for i in range(row):
+            for j in range(col):
+                previous, grid[i][j] = grid[i][j], previous
+        grid[0][0] = previous
+        k -=1
+    return grid
+    
+print (shiftGrid([[1,2,3],[4,5,6],[7,8,9]],2))
